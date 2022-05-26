@@ -1,6 +1,6 @@
 class Eqio {
   constructor(el) {
-    if (!el || !('IntersectionObserver' in window)) {
+    if (!el || !('ResizeObserver' in window)) {
       return;
     }
 
@@ -42,76 +42,46 @@ class Eqio {
 
   createTriggers() {
     this.sizesArray = JSON.parse(this.el.attributes['data-eqio-sizes'].value);
-    this.triggerEls = [];
-    let triggerEl;
-    const fragment = document.createDocumentFragment();
-
-    this.sizesArray.forEach((trigger) => {
-      triggerEl = document.createElement('div');
-      triggerEl.className = 'eqio__trigger';
-      triggerEl.setAttribute('data-eqio-size', trigger);
-      triggerEl.style.width = `${trigger.slice(1)}px`;
-
-      this.triggerEls.push(triggerEl);
-      fragment.appendChild(triggerEl);
-    });
-
-    this.el.appendChild(fragment);
   }
 
   createObservers() {
     const prefix = this.el.attributes['data-eqio-prefix'] ? `${this.el.attributes['data-eqio-prefix'].value}-` : '';
     const className = `${prefix}eqio-`;
-    const observerOptions = {
-      root: this.el,
-      rootMargin: '0px',
-      threshold: 1,
-    };
-
-    const observerCallback = (entries) => {
-      entries.forEach((entry) => {
-        const size = entry.target.dataset.eqioSize;
-
-        if (size.indexOf('>') === 0) {
-          if (entry.intersectionRatio === 1) {
-            this.el.classList.add(`${className}${size}`);
+    // eslint-disable-next-line no-undef
+    this.observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        this.sizesArray.forEach((size) => {
+          if (size.indexOf('>') === 0 ){
+            if(width > parseInt(size.substring(1, size.length))) {
+              this.el.classList.add(`${className}${size}`);
+            }
+            else{
+              this.el.classList.remove(`${className}${size}`);
+            }
           }
-          else {
-            this.el.classList.remove(`${className}${size}`);
+          if (size.indexOf('<') === 0 ){
+            if(width < parseInt(size.substring(1, size.length))) {
+              this.el.classList.add(`${className}${size}`);
+            }
+            else{
+              this.el.classList.remove(`${className}${size}`);
+            }
           }
-        }
-        else {
-          if (entry.intersectionRatio === 1) {
-            this.el.classList.remove(`${className}${size}`);
-          }
-          else {
-            this.el.classList.add(`${className}${size}`);
-          }
-        }
-      });
-    };
-
-    this.observer = new IntersectionObserver(observerCallback, observerOptions);
-    this.sizesArray.forEach((size, index) => {
-      this.observer.observe(this.triggerEls[index]);
+        });
+      }
     });
+    this.observer.observe(this.el);
   }
 
   stop() {
     this.el.removeAttribute('data-eqio-sizes');
 
-    this.sizesArray.forEach((size, index) => {
-      this.observer.unobserve(this.triggerEls[index]);
-    });
-
-    this.triggerEls.forEach((trigger) => {
-      this.el.removeChild(trigger);
-    });
+    this.observer.unobserve(this.el);
 
     delete this.el;
     delete this.observer;
     delete this.sizesArray;
-    delete this.triggerEls;
   }
 }
 
